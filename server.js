@@ -1,8 +1,13 @@
 const express = require("express")
+const bodyParser = require("body-parser");
 const { v4: uuidv4 } = require('uuid');
-const util = require('util');
+
+const path = __dirname + '/app/views/';
 
 const app = express()
+app.use(express.static(path));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 const http = require("http")
 const expServer = http.createServer(app)
@@ -10,7 +15,7 @@ const expServer = http.createServer(app)
 const {Server} = require("socket.io");
 const io = new Server(expServer, {
     cors: {
-        origin: "http://localhost:8081",
+        origin: "https://climate-game-production.onrender.com",
         methods: ["GET", "POST"],
         credentials: true
     }
@@ -507,9 +512,10 @@ function deepCopy(obj) {
 }
 
 
-
+app.get('/', function (req,res) {
+    res.sendFile(path + "index.html");
+});
 
 const PORT = process.env.PORT || 8080
     expServer.listen(PORT, () => {
-        console.log("Server is now listening at " + PORT)
 })
