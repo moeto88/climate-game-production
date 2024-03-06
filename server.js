@@ -239,7 +239,7 @@ io.on("connection", (socket) => {
         const roomIndex = rooms.findIndex((r) => r.id == roomId)
         const room = rooms[roomIndex]
         const user = room.users.find((u) => u.id == userId)
-        user.resourceSet.remainingBalance -= ppInfo.fossil.price
+        user.resourceSet.remainingBalance -= room.ppInfo.fossil.price
         user.resourceSet.powerPlant.fossil++
         user.resourceSet.remainingFuelingTime.fossil++
         io.to(user.id).emit("updateUser", user)
@@ -251,7 +251,7 @@ io.on("connection", (socket) => {
         const roomIndex = rooms.findIndex((r) => r.id == roomId)
         const room = rooms[roomIndex]
         const user = room.users.find((u) => u.id == userId)
-        user.resourceSet.remainingBalance -= ppInfo.renewable.price
+        user.resourceSet.remainingBalance -= room.ppInfo.renewable.price
         user.resourceSet.powerPlant.renewable++
         user.resourceSet.remainingFuelingTime.renewable++
         io.to(user.id).emit("updateUser", user)
@@ -263,7 +263,7 @@ io.on("connection", (socket) => {
         const roomIndex = rooms.findIndex((r) => r.id == roomId)
         const room = rooms[roomIndex]
         const user = room.users.find((u) => u.id == userId)
-        user.resourceSet.remainingBalance -= ppInfo.nuclear.price
+        user.resourceSet.remainingBalance -= room.ppInfo.nuclear.price
         user.resourceSet.powerPlant.nuclear++
         user.resourceSet.remainingFuelingTime.nuclear++
         io.to(user.id).emit("updateUser", user)
