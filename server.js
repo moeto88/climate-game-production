@@ -36,7 +36,7 @@ const technology_name = {
 }
 
 io.on("connection", (socket) => {
-    socket.on("createRoom", (userName, countryList, setting_co2Emission, setting_historicalEmission, emission_fineList, ppInfo) => {
+    socket.on("createRoom", (userName, countryList, setting_co2Emission, setting_historicalEmission, emission_fineList, ppInfo, maxRoundNum) => {
         const roomId = generateRoomId()
         const user = {
             id: socket.id,
@@ -125,6 +125,7 @@ io.on("connection", (socket) => {
             users: [user],
             readyCountryList: [],
             roundNum: 1,
+            maxRoundNum: maxRoundNum,
             ppInfo: ppInfo,
             countryResource: {
                 "A": set_A,
