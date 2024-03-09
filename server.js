@@ -42,6 +42,7 @@ io.on("connection", (socket) => {
             id: socket.id,
             name: userName,
             roomId: roomId,
+            ready: false,
             country: "",
             budget: 0,
             resourceSet: {},
@@ -59,6 +60,8 @@ io.on("connection", (socket) => {
             remainingBalance: countryList[0].budget,
             currentCO2Emission: 0,
             currentEnergyOutput: 0,
+            totalCO2Emission: 0,
+            totalEnergyOutput: 0
         }
         
         const set_B = {
@@ -71,6 +74,8 @@ io.on("connection", (socket) => {
             remainingBalance: countryList[1].budget,
             currentCO2Emission: 0,
             currentEnergyOutput: 0,
+            totalCO2Emission: 0,
+            totalEnergyOutput: 0
         }
         
         const set_C = {
@@ -83,6 +88,8 @@ io.on("connection", (socket) => {
             remainingBalance: countryList[2].budget,
             currentCO2Emission: 0,
             currentEnergyOutput: 0,
+            totalCO2Emission: 0,
+            totalEnergyOutput: 0
         }
         
         const set_D = {
@@ -95,6 +102,8 @@ io.on("connection", (socket) => {
             remainingBalance: countryList[3].budget,
             currentCO2Emission: 0,
             currentEnergyOutput: 0,
+            totalCO2Emission: 0,
+            totalEnergyOutput: 0
         }
 
         const countryBudgetList = {
@@ -114,6 +123,7 @@ io.on("connection", (socket) => {
         const room = {
             id: roomId,
             users: [user],
+            readyCountryList: [],
             roundNum: 1,
             ppInfo: ppInfo,
             countryResource: {
@@ -149,6 +159,7 @@ io.on("connection", (socket) => {
             id: socket.id,
             name: userName,
             roomId: roomId,
+            ready: false,
             country: "",
             budget: 0,
             resourceSet: {},
@@ -163,16 +174,51 @@ io.on("connection", (socket) => {
         io.in(room.id).emit("updateRoom", room)
     })
 
-    socket.on("startGame", (roomId, userId, country) => {
+    socket.on("ready", (roomId, userId, country) => {
         const roomIndex = rooms.findIndex((r) => r.id == roomId)
         const room = rooms[roomIndex]
         const user = room.users.find((u) => u.id == userId)
-        user.country = country
-        user.budget = room.countryBudgetList[user.country]
-        user.resourceSet = deepCopy(room.countryResource[user.country]);
+        if(!(room.readyCountryList.includes(country))) {
+            user.country = country
+            room.readyCountryList.push(country)
+            user.ready = true
+            io.to(user.id).emit("updateUser", user)
+            io.to(user.id).emit("readyError", "")
+            io.in(roomId).emit("updateRoom", room)
+        }
+        else {
+            io.to(user.id).emit("readyError", "The selected country is already taken")
+        }
+    })
+
+    socket.on("notReady", (roomId, userId) => {
+        const roomIndex = rooms.findIndex((r) => r.id == roomId)
+        const room = rooms[roomIndex]
+        const user = room.users.find((u) => u.id == userId)
+        room.readyCountryList = room.readyCountryList.filter(country => country !== user.country);
+        user.country = ""
+        user.ready = false
+        io.to(user.id).emit("updateUser", user)
+        io.in(roomId).emit("updateRoom", room)
+    })
+
+    socket.on("startGame", (roomId) => {
+        const roomIndex = rooms.findIndex((r) => r.id == roomId)
+        const room = rooms[roomIndex]
+        room.users.forEach(user => {
+            user.budget = room.countryBudgetList[user.country]
+            user.resourceSet = deepCopy(room.countryResource[user.country]);
+            io.to(user.id).emit("setUsername", room)
+        })
+        io.in(roomId).emit("goToMainPage", room)
+    })
+
+    socket.on("updateUserAndRoom", (roomId, userId) => {
+        const roomIndex = rooms.findIndex((r) => r.id == roomId)
+        const room = rooms[roomIndex]
+        const user = room.users.find((u) => u.id == userId)
         io.to(user.id).emit("initGame", user)
         io.in(roomId).emit("updateAll", room)
-        io.in(roomId).emit("setUsername", room)
     })
 
     socket.on("nextRound", (roomId) => {
@@ -251,7 +297,7 @@ io.on("connection", (socket) => {
         const roomIndex = rooms.findIndex((r) => r.id == roomId)
         const room = rooms[roomIndex]
         const user = room.users.find((u) => u.id == userId)
-        user.resourceSet.remainingBalance -= room.ppInfo.renewable.price
+        user.resourceSet.remainingBalance -= room.renewable.price
         user.resourceSet.powerPlant.renewable++
         user.resourceSet.remainingFuelingTime.renewable++
         io.to(user.id).emit("updateUser", user)
@@ -278,6 +324,8 @@ io.on("connection", (socket) => {
         user.resourceSet.remainingFuelingTime.fossil--
         user.resourceSet.currentEnergyOutput += room.ppInfo.fossil.energyOutput
         user.resourceSet.currentCO2Emission += room.ppInfo.fossil.co2Emission
+        user.resourceSet.totalEnergyOutput += room.ppInfo.fossil.energyOutput
+        user.resourceSet.totalCO2Emission += room.ppInfo.fossil.co2Emission
         user.resourceSet.resource.fossilFuel -= room.ppInfo.fossil.consumption
         io.to(user.id).emit("updateUser", user)
         io.to(user.id).emit("history", "You fueled a fossil power plant.")
@@ -292,10 +340,11 @@ io.on("connection", (socket) => {
         user.resourceSet.remainingFuelingTime.renewable--
         if(weather == "Good") {
             user.resourceSet.currentEnergyOutput = user.resourceSet.currentEnergyOutput + room.ppInfo.renewable.energyOutput + 1
+            user.resourceSet.totalEnergyOutput = user.resourceSet.totalEnergyOutput + room.ppInfo.renewable.energyOutput + 1
         }
         else if(weather == "Bad") {
             user.resourceSet.currentEnergyOutput = user.resourceSet.currentEnergyOutput + room.ppInfo.renewable.energyOutput - 1
-
+            user.resourceSet.totalEnergyOutput = user.resourceSet.totalEnergyOutput + room.ppInfo.renewable.energyOutput - 1
         }
         user.resourceSet.currentCO2Emission += room.ppInfo.renewable.co2Emission
         io.to(user.id).emit("updateUser", user)
@@ -309,6 +358,7 @@ io.on("connection", (socket) => {
         const user = room.users.find((u) => u.id == userId)
         user.resourceSet.remainingFuelingTime.nuclear--
         user.resourceSet.currentEnergyOutput += room.ppInfo.nuclear.energyOutput
+        user.resourceSet.totalEnergyOutput += room.ppInfo.nuclear.energyOutput
         user.resourceSet.currentCO2Emission += room.ppInfo.nuclear.co2Emission
         user.resourceSet.resource.uranium -= room.ppInfo.nuclear.consumption
         io.to(user.id).emit("updateUser", user)
@@ -483,6 +533,14 @@ io.on("connection", (socket) => {
 
         io.to(user.id).emit("history", "You refused a trade request from " + partner.name + ".")
         io.to(partner.id).emit("history", "Your trade request was refused by " + user.name + ".")
+    })
+
+    socket.on("endGame", (roomId) => {
+        const roomIndex = rooms.findIndex((r) => r.id == roomId)
+        const room = rooms[roomIndex]
+        room.users.forEach(user => {
+            io.to(user.id).emit("endGame_notHost")
+        })
     })
 })
 
