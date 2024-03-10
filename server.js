@@ -21,6 +21,7 @@ const io = new Server(expServer, {
     }
 })
 
+
 const rooms = []
 
 
@@ -36,7 +37,7 @@ const technology_name = {
 }
 
 io.on("connection", (socket) => {
-    socket.on("createRoom", (userName, countryList, setting_co2Emission, setting_historicalEmission, emission_fineList, ppInfo, maxRoundNum) => {
+    socket.on("createRoom", (userName, countryList, setting_co2Emission, setting_historicalEmission, emission_fineList, ppInfo, maxRoundNum, setting_naturalDisaster) => {
         const roomId = generateRoomId()
         const user = {
             id: socket.id,
@@ -141,7 +142,10 @@ io.on("connection", (socket) => {
             countryFineList: countryFineList,
             setting_co2Emission: setting_co2Emission,
             setting_historicalEmission: setting_historicalEmission,
-            emission_fineList: emission_fineList
+            emission_fineList: emission_fineList,
+            setting_naturalDisaster: setting_naturalDisaster,
+            totalCO2Emission_first3Round: 0,
+            naturalDisasterFine: 50
         }
         rooms.push(room)
         socket.join(roomId)
@@ -269,8 +273,14 @@ io.on("connection", (socket) => {
             }
 
             fine = energyTargetFine + co2EmissionFine + historicalEmissionFine
-            user.resourceSet.remainingBalance -= fine
 
+            if(room.setting_naturalDisaster) {
+                if(room.roundNum <= 4) {
+                    room.totalCO2Emission_first3Round += user.resourceSet.currentCO2Emission
+                }
+            }
+
+            user.resourceSet.remainingBalance -= fine
             user.resourceSet.currentCO2Emission = 0
 
             io.to(user.id).emit("updateUser", user)
@@ -279,6 +289,19 @@ io.on("connection", (socket) => {
             io.to(user.id).emit("history", "You received €" + (user.budget + historicalEmissionEarning) + ".")
             io.to(user.id).emit("history", "You got fined €" + fine + ".")
         })
+
+        if(room.setting_naturalDisaster) {
+            if(room.roundNum == 4) {
+                if(room.totalCO2Emission_first3Round >= 300) {
+                    room.users.forEach(user => {
+                        user.resourceSet.remainingBalance -= room.naturalDisasterFine
+                        io.to(user.id).emit("updateUser", user)
+                        io.to(user.id).emit("show_naturalDisaster", room.naturalDisasterFine)
+                        io.to(user.id).emit("history", "You paid €" + room.naturalDisasterFine + " to address natural disaster.")
+                    })
+                }
+            }
+        }
         io.in(roomId).emit("updateAll", room)
     })
 
@@ -569,6 +592,7 @@ function deepCopy(obj) {
 
     return copy;
 }
+
 
 
 app.get('/', function (req,res) {
