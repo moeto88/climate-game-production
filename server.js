@@ -143,7 +143,7 @@ io.on("connection", (socket) => {
                 "D": set_D
             },
             weather: "Good",
-            weatherParam: 1,
+            weatherParam: 5,
             resourceName: resource_name,
             technologyName: technology_name,
             countryBudgetList: countryBudgetList,
@@ -266,7 +266,7 @@ io.on("connection", (socket) => {
             else {
                 user.resourceSet.currentEnergyOutput -= user.resourceSet.energyTarget
             }
-            
+
             if(room.setting_RG == "green") {
     
                 if(room.setting_co2Emission) {
@@ -379,12 +379,12 @@ io.on("connection", (socket) => {
         const weather = room.weather
         user.resourceSet.remainingFuelingTime.renewable--
         if(weather == "Good") {
-            user.resourceSet.currentEnergyOutput = user.resourceSet.currentEnergyOutput + room.ppInfo.renewable.energyOutput + 1
-            user.resourceSet.totalEnergyOutput = user.resourceSet.totalEnergyOutput + room.ppInfo.renewable.energyOutput + 1
+            user.resourceSet.currentEnergyOutput = user.resourceSet.currentEnergyOutput + room.ppInfo.renewable.energyOutput
+            user.resourceSet.totalEnergyOutput = user.resourceSet.totalEnergyOutput + room.ppInfo.renewable.energyOutput
         }
         else if(weather == "Bad") {
-            user.resourceSet.currentEnergyOutput = user.resourceSet.currentEnergyOutput + room.ppInfo.renewable.energyOutput - 1
-            user.resourceSet.totalEnergyOutput = user.resourceSet.totalEnergyOutput + room.ppInfo.renewable.energyOutput - 1
+            user.resourceSet.currentEnergyOutput = user.resourceSet.currentEnergyOutput + room.ppInfo.renewable.energyOutput - room.weatherParam
+            user.resourceSet.totalEnergyOutput = user.resourceSet.totalEnergyOutput + room.ppInfo.renewable.energyOutput - room.weatherParam
         }
         user.resourceSet.currentCO2Emission += room.ppInfo.renewable.co2Emission
         io.to(user.id).emit("updateUser", user)
