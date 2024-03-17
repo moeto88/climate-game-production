@@ -259,14 +259,15 @@ io.on("connection", (socket) => {
             let historicalEmissionFine = 0
             let historicalEmissionEarning = 0
 
+            if(user.resourceSet.currentEnergyOutput < user.resourceSet.energyTarget) {
+                energyTargetFine = room.countryFineList[user.country]
+                user.resourceSet.currentEnergyOutput = 0
+            }
+            else {
+                user.resourceSet.currentEnergyOutput -= user.resourceSet.energyTarget
+            }
+            
             if(room.setting_RG == "green") {
-                if(user.resourceSet.currentEnergyOutput < user.resourceSet.energyTarget) {
-                    energyTargetFine = room.countryFineList[user.country]
-                    user.resourceSet.currentEnergyOutput = 0
-                }
-                else {
-                    user.resourceSet.currentEnergyOutput -= user.resourceSet.energyTarget
-                }
     
                 if(room.setting_co2Emission) {
                     co2EmissionFine = (user.resourceSet.currentCO2Emission / 10) * room.emission_fineList.fine_co2Emission
