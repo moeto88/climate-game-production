@@ -56,7 +56,8 @@ io.on("connection", (socket) => {
             budget: 0,
             resourceSet: {},
             tradeButtonFlag: false,
-            host: true
+            host: true,
+            num_meetingTarget: 0
         }
 
         const set_A = {
@@ -186,7 +187,8 @@ io.on("connection", (socket) => {
                 budget: 0,
                 resourceSet: {},
                 tradeButtonFlag: false,
-                host:false
+                host:false,
+                num_meetingTarget: 0
             }
     
             room.users.push(user)
@@ -265,6 +267,7 @@ io.on("connection", (socket) => {
             }
             else {
                 user.resourceSet.currentEnergyOutput -= user.resourceSet.energyTarget
+                user.num_meetingTarget++
             }
 
             if(room.setting_RG == "green") {
@@ -446,25 +449,6 @@ io.on("connection", (socket) => {
             io.to(user.id).emit("history", "You sent a trade request to " + partner.name + ".")
             io.to(partner.id).emit("history", "You received a trade request from " + user.name + ".")
         }
-        else if(type == "technology") {
-            tradeInfo = {
-                tradeId: randomId,
-                tradePartner: user.name,
-                tradePartnerId: user.id,
-                type: "technology",
-                keyName: keyName,
-                quantity: 0,
-                payment: payment
-            }
-            io.to(user.id).emit("askSuccess", message)
-            io.to(partner.id).emit("request", tradeInfo)
-            io.to(user.id).emit("history", "You sent a trade request to " + partner.name + ".")
-            io.to(partner.id).emit("history", "You received a trade request from " + user.name + ".")
-        }
-        else {
-            message = "Error"
-            io.to(user.id).emit("askSuccess", message)
-        }
     })
 
     socket.on("acceptRequest", (roomId, userId, request) => {
@@ -509,60 +493,41 @@ io.on("connection", (socket) => {
             }
         }
         else if(request.type == "powerPlant") {
-            if(user.resourceSet.powerPlant[request.keyName] >= request.quantity && partner.resourceSet.remainingBalance >= request.payment) {
-                user.resourceSet.powerPlant[request.keyName] -= request.quantity
-                user.resourceSet.remainingFuelingTime[request.keyName] -= request.quantity
-                user.resourceSet.remainingBalance += request.payment
-                partner.resourceSet.powerPlant[request.keyName] += request.quantity
-                partner.resourceSet.remainingFuelingTime[request.keyName] += request.quantity
-                partner.resourceSet.remainingBalance -= request.payment
+            console.log("test")
+            if(partner.resourceSet.remainingBalance >= request.payment) {
+                const price = (room.ppInfo[request.keyName].price) * request.quantity
+                const profit = request.payment - price
 
-                io.in(roomId).emit("updateAll", room)
-                io.to(user.id).emit("updateUser", user)
-                io.to(partner.id).emit("updateUser", partner)
-                io.to(user.id).emit("deleteTradeRequest", request.tradeId)
-
-                if(request.quantity > 1) {
-                    io.to(user.id).emit("history", "You sold " + request.quantity + " " + request.keyName + " power plants for " + request.payment + ".")
-                    io.to(partner.id).emit("history", "You bought " + request.quantity + " " + request.keyName + " power plants for " + request.payment + ".")
+                if(user.resourceSet.remainingBalance + profit >= 0) {
+                    user.resourceSet.remainingBalance += profit
+                    partner.resourceSet.powerPlant[request.keyName] += request.quantity
+                    partner.resourceSet.remainingFuelingTime[request.keyName] += request.quantity
+                    partner.resourceSet.remainingBalance -= request.payment
+    
+                    io.in(roomId).emit("updateAll", room)
+                    io.to(user.id).emit("updateUser", user)
+                    io.to(partner.id).emit("updateUser", partner)
+                    io.to(user.id).emit("deleteTradeRequest", request.tradeId)
+    
+                    if(request.quantity > 1) {
+                        io.to(user.id).emit("history", "You sold " + request.quantity + " " + request.keyName + " power plants for " + request.payment + ".")
+                        io.to(partner.id).emit("history", "You bought " + request.quantity + " " + request.keyName + " power plants for " + request.payment + ".")
+                    }
+                    else {
+                        io.to(user.id).emit("history", "You sold " + request.quantity + " " + request.keyName + " power plant for " + request.payment + ".")
+                        io.to(partner.id).emit("history", "You bought " + request.quantity + " " + request.keyName + " power plant for " + request.payment + ".")
+                    }
                 }
                 else {
-                    io.to(user.id).emit("history", "You sold " + request.quantity + " " + request.keyName + " power plant for " + request.payment + ".")
-                    io.to(partner.id).emit("history", "You bought " + request.quantity + " " + request.keyName + " power plant for " + request.payment + ".")
-                }
-            }
-            else {
-                if(user.resourceSet.powerPlant[request.keyName] < request.quantity) {
-                    io.to(user.id).emit("noPowerPlant")
+                    io.to(user.id).emit("noMoneyForBuilding", partner)
                 }
 
-                if(partner.resourceSet.remainingBalance < request.payment) {
-                    io.to(user.id).emit("noMoney", partner)
-                }
-            }
-        }
-        else if(request.type == "technology") {
-            if(partner.resourceSet.remainingBalance >= request.payment) {
-                user.resourceSet.remainingBalance += request.payment
-                partner.resourceSet.technology[request.keyName] = true
-                partner.resourceSet.remainingBalance -= request.payment
-
-                io.in(roomId).emit("updateAll", room)
-                io.to(user.id).emit("updateUser", user)
-                io.to(partner.id).emit("updateUser", partner)
-                io.to(user.id).emit("deleteTradeRequest", request.tradeId)
-
-                io.to(user.id).emit("history", "You sold " + request.keyName + " technology for " + request.payment + ".")
-                io.to(partner.id).emit("history", "You bought " + request.keyName + " technology for " + request.payment + ".")
             }
             else {
                 if(partner.resourceSet.remainingBalance < request.payment) {
                     io.to(user.id).emit("noMoney", partner)
                 }
-            }   
-        }
-        else {
-            console.log("error")
+            }
         }
     })
 
