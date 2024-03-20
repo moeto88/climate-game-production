@@ -2,7 +2,7 @@ const express = require("express")
 const bodyParser = require("body-parser");
 const { v4: uuidv4 } = require('uuid');
 
-const path = __dirname + '/app/views/';
+const path = __dirname + '/app/dist/';
 
 const app = express()
 app.use(express.static(path));
