@@ -21,7 +21,6 @@ const io = new Server(expServer, {
     }
 })
 
-
 const rooms = []
 
 const resource_name = {
@@ -71,7 +70,9 @@ io.on("connection", (socket) => {
             currentCO2Emission: 0,
             currentEnergyOutput: 0,
             totalCO2Emission: 0,
-            totalEnergyOutput: 0
+            totalEnergyOutput: 0,
+            totalSpending: 0,
+            totalFine: 0
         }
         
         const set_B = {
@@ -85,7 +86,9 @@ io.on("connection", (socket) => {
             currentCO2Emission: 0,
             currentEnergyOutput: 0,
             totalCO2Emission: 0,
-            totalEnergyOutput: 0
+            totalEnergyOutput: 0,
+            totalSpending: 0,
+            totalFine: 0
         }
         
         const set_C = {
@@ -99,7 +102,9 @@ io.on("connection", (socket) => {
             currentCO2Emission: 0,
             currentEnergyOutput: 0,
             totalCO2Emission: 0,
-            totalEnergyOutput: 0
+            totalEnergyOutput: 0,
+            totalSpending: 0,
+            totalFine: 0
         }
         
         const set_D = {
@@ -113,7 +118,9 @@ io.on("connection", (socket) => {
             currentCO2Emission: 0,
             currentEnergyOutput: 0,
             totalCO2Emission: 0,
-            totalEnergyOutput: 0
+            totalEnergyOutput: 0,
+            totalSpending: 0,
+            totalFine: 0
         }
 
         const countryBudgetList = {
@@ -296,11 +303,10 @@ io.on("connection", (socket) => {
                 }
             }
             
-
             fine = energyTargetFine + co2EmissionFine + historicalEmissionFine
 
-
             user.resourceSet.remainingBalance -= fine
+            user.resourceSet.totalFine += fine
             user.resourceSet.currentCO2Emission = 0
 
             io.to(user.id).emit("updateUser", user)
@@ -329,6 +335,7 @@ io.on("connection", (socket) => {
         const room = rooms[roomIndex]
         const user = room.users.find((u) => u.id == userId)
         user.resourceSet.remainingBalance -= room.ppInfo.fossil.price
+        user.resourceSet.totalSpending += room.ppInfo.fossil.price
         user.resourceSet.powerPlant.fossil++
         user.resourceSet.remainingFuelingTime.fossil++
         io.to(user.id).emit("updateUser", user)
@@ -341,6 +348,7 @@ io.on("connection", (socket) => {
         const room = rooms[roomIndex]
         const user = room.users.find((u) => u.id == userId)
         user.resourceSet.remainingBalance -= room.ppInfo.renewable.price
+        user.resourceSet.totalSpending += room.ppInfo.renewable.price
         user.resourceSet.powerPlant.renewable++
         user.resourceSet.remainingFuelingTime.renewable++
         io.to(user.id).emit("updateUser", user)
@@ -353,6 +361,7 @@ io.on("connection", (socket) => {
         const room = rooms[roomIndex]
         const user = room.users.find((u) => u.id == userId)
         user.resourceSet.remainingBalance -= room.ppInfo.nuclear.price
+        user.resourceSet.totalSpending += room.ppInfo.nuclear.price
         user.resourceSet.powerPlant.nuclear++
         user.resourceSet.remainingFuelingTime.nuclear++
         io.to(user.id).emit("updateUser", user)
@@ -463,6 +472,7 @@ io.on("connection", (socket) => {
                 user.resourceSet.remainingBalance += request.payment
                 partner.resourceSet.resource[request.keyName] += request.quantity
                 partner.resourceSet.remainingBalance -= request.payment
+                partner.resourceSet.totalSpending += request.payment
 
                 io.in(roomId).emit("updateAll", room)
                 io.to(user.id).emit("updateUser", user)
@@ -498,10 +508,14 @@ io.on("connection", (socket) => {
                 const profit = request.payment - price
 
                 if(user.resourceSet.remainingBalance + profit >= 0) {
+                    if(profit < 0) {
+                        user.resourceSet.totalSpending += profit * -1
+                    }
                     user.resourceSet.remainingBalance += profit
                     partner.resourceSet.powerPlant[request.keyName] += request.quantity
                     partner.resourceSet.remainingFuelingTime[request.keyName] += request.quantity
                     partner.resourceSet.remainingBalance -= request.payment
+                    partner.resourceSet.totalSpending += request.payment
     
                     io.in(roomId).emit("updateAll", room)
                     io.to(user.id).emit("updateUser", user)
