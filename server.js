@@ -303,7 +303,9 @@ io.on("connection", (socket) => {
                 }
             }
             
+
             fine = energyTargetFine + co2EmissionFine + historicalEmissionFine
+
 
             user.resourceSet.remainingBalance -= fine
             user.resourceSet.totalFine += fine
@@ -562,7 +564,14 @@ io.on("connection", (socket) => {
         const roomIndex = rooms.findIndex((r) => r.id == roomId)
         const room = rooms[roomIndex]
         room.users.forEach(user => {
-            io.to(user.id).emit("endGame_notHost")
+            if(user.resourceSet.currentEnergyOutput >= user.resourceSet.energyTarget) {
+                user.num_meetingTarget++
+            }
+        })
+        io.in(roomId).emit("updateAll", room)
+
+        room.users.forEach(user => {
+            io.to(user.id).emit("move_endGame")
         })
     })
 })
